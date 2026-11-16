@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Contact Form - Project 3</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f7fb;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: #fff;
+            width: 100%;
+            max-width: 550px;
+            padding: 35px;
+            border-radius: 12px;
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.08);
+        }
+
+        h1 {
+            color: #172b4d;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .description {
+            color: #667085;
+            text-align: center;
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 7px;
+            color: #344054;
+            font-weight: 600;
+        }
+
+        input,
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d0d5dd;
+            border-radius: 7px;
+            font-size: 15px;
+            outline: none;
+            font-family: inherit;
+        }
+
+        input:focus,
+        textarea:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        textarea {
+            min-height: 130px;
+            resize: vertical;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 7px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        button:disabled {
+            background: #98a2b3;
+            cursor: not-allowed;
+        }
+
+        #message {
+            display: none;
+            margin-top: 18px;
+            padding: 13px;
+            border-radius: 7px;
+            line-height: 1.5;
+            font-size: 14px;
+            overflow-wrap: anywhere;
+        }
+
+        #message.success {
+            display: block;
+            color: #067647;
+            background: #ecfdf3;
+            border: 1px solid #abefc6;
+        }
+
+        #message.error {
+            display: block;
+            color: #b42318;
+            background: #fef3f2;
+            border: 1px solid #fecdca;
+        }
+
+        .footer {
+            margin-top: 25px;
+            text-align: center;
+            color: #98a2b3;
+            font-size: 13px;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 25px 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+
+        <h1>Contact Us</h1>
+
+        <p class="description">
+            Have a question or need assistance?
+            Send us a message and we'll get back to you.
+        </p>
+
+        <form id="contactForm">
+
+            <div class="form-group">
+                <label for="name">Full Name</label>
+
+                <input type="text" id="name" name="name" placeholder="Enter your name" maxlength="100" required>
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email Address</label>
+
+                <input type="email" id="email" name="email" placeholder="Enter your email" maxlength="254" required>
+            </div>
+
+            <div class="form-group">
+                <label for="subject">Subject</label>
+
+                <input type="text" id="subject" name="subject" placeholder="Enter subject" maxlength="150" required>
+            </div>
+
+            <div class="form-group">
+                <label for="messageInput">Message</label>
+
+                <textarea id="messageInput" name="message" placeholder="Write your message..." maxlength="5000"
+                    required></textarea>
+            </div>
+
+            <button type="submit" id="submitBtn">
+                Send Message
+            </button>
+
+            <div id="message" role="status" aria-live="polite"></div>
+
+        </form>
+
+        <div class="footer">
+            Powered by AWS Lambda, API Gateway and Amazon SES
+        </div>
+
+    </div>
+
+    <script>
+
+        // AWS API Gateway endpoint
+        const API_ENDPOINT =
+            'https://jw0o1ts2t2.execute-api.eu-north-1.amazonaws.com/prod/contact';
+
+        const form = document.getElementById('contactForm');
+
+        const submitBtn = document.getElementById('submitBtn');
+
+        const statusMessage = document.getElementById('message');
+
+        // Display success or error message
+        function showMessage(type, message) {
+
+            statusMessage.className = type;
+
+            statusMessage.textContent = message;
+
+        }
+
+        // Handle contact form submission
+        form.addEventListener('submit', async function (event) {
+
+            event.preventDefault();
+
+            if (!form.reportValidity()) {
+                return;
+            }
+
+            // Collect form data
+            const payload = {
+
+                name: document.getElementById('name').value.trim(),
+
+                email: document.getElementById('email').value.trim(),
+
+                subject: document.getElementById('subject').value.trim(),
+
+                message: document.getElementById('messageInput').value.trim()
+
+            };
+
+            // Validate fields
+            if (
+                !payload.name ||
+                !payload.email ||
+                !payload.subject ||
+                !payload.message
+            ) {
+
+                showMessage('error', 'Please complete all fields.');
+
+                return;
+
+            }
+
+            // Disable button while sending
+            submitBtn.disabled = true;
+
+            submitBtn.textContent = 'Sending...';
+
+            statusMessage.className = '';
+
+            statusMessage.style.display = 'none';
+
+            try {
+
+                // Send request to API Gateway
+                const apiResponse = await fetch(API_ENDPOINT, {
+
+                    method: 'POST',
+
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+
+                    body: JSON.stringify(payload)
+
+                });
+
+                // Read API response
+                const responseText = await apiResponse.text();
+
+                let result;
+
+                try {
+
+                    result = responseText
+                        ? JSON.parse(responseText)
+                        : {};
+
+                } catch {
+
+                    throw new Error(
+                        `API returned a non-JSON response (HTTP ${apiResponse.status}). Check API Gateway configuration.`
+                    );
+
+                }
+
+                // Check HTTP status
+                if (!apiResponse.ok) {
+
+                    throw new Error(
+                        result.message ||
+                        result.error ||
+                        `Request failed with HTTP ${apiResponse.status}.`
+                    );
+
+                }
+
+                // Check application response
+                if (result.success !== true) {
+
+                    throw new Error(
+                        result.message ||
+                        'Unable to send your message.'
+                    );
+
+                }
+
+                // Success
+                showMessage(
+                    'success',
+                    result.message || 'Your message was sent successfully!'
+                );
+
+                // Reset form
+                form.reset();
+
+            } catch (error) {
+
+                console.error('Contact form error:', error);
+
+                if (error instanceof TypeError) {
+
+                    showMessage(
+                        'error',
+                        'Network or CORS error. Check your API Gateway URL, POST /contact route and CORS configuration.'
+                    );
+
+                } else {
+
+                    showMessage(
+                        'error',
+                        error.message || 'Something went wrong. Please try again.'
+                    );
+
+                }
+
+            } finally {
+
+                // Re-enable button
+                submitBtn.disabled = false;
+
+                submitBtn.textContent = 'Send Message';
+
+            }
+
+        });
+
+    </script>
+
+</body>
+
+</html>
